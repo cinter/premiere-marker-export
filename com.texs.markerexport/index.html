@@ -76,9 +76,10 @@
     <div class="wrap">
         <h1>Export Markers as Clips</h1>
         <p class="hint">
-            Set your export folder and preset once, then export.
-            Each marker exports through to the next marker
-            (or uses its own duration if it has one).
+            Exports one video clip for the span between each pair of markers.
+            With markers at every cut, 4 markers → 3 clips: each marker
+            runs through to the next one (the last marker just closes the
+            final clip). Set your export folder and preset once, then export.
         </p>
 
         <div class="btnRow">
@@ -91,7 +92,7 @@
             <div class="row"><span class="label">Preset:</span><span class="val" id="presetVal">not set</span></div>
         </div>
 
-        <button id="exportBtn" disabled>Export Markers</button>
+        <button id="exportBtn" disabled>Export Video Clips</button>
         <div id="status"></div>
     </div>
 
