@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Marker Export</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #2b2b2b;
+            color: #d8d8d8;
+            font-family: -apple-system, "Segoe UI", sans-serif;
+            font-size: 12px;
+        }
+        .wrap {
+            box-sizing: border-box;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+        }
+        h1 {
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0;
+            color: #fff;
+        }
+        p.hint {
+            margin: 0;
+            line-height: 1.4;
+            color: #9a9a9a;
+        }
+        .settings {
+            background: #232323;
+            border: 1px solid #3a3a3a;
+            border-radius: 4px;
+            padding: 8px 10px;
+            line-height: 1.6;
+        }
+        .settings .row { display: flex; gap: 6px; }
+        .settings .label { color: #8a8a8a; min-width: 52px; }
+        .settings .val {
+            color: #d8d8d8;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        button {
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btnRow { display: flex; gap: 8px; }
+        .btnRow button { flex: 1; }
+        .pick { background: #555; }
+        .pick:hover { background: #666; }
+        #exportBtn { background: #4b7bec; }
+        #exportBtn:hover { background: #3867d6; }
+        button:disabled { background: #3a3a3a; color: #777; cursor: default; }
+        #status {
+            margin-top: auto;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+        #status.ok { color: #8bd17c; }
+        #status.err { color: #e07a7a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <h1>Export Markers as Clips</h1>
+        <p class="hint">
+            Set your export folder and preset once, then export.
+            Each marker exports through to the next marker
+            (or uses its own duration if it has one).
+        </p>
+
+        <div class="btnRow">
+            <button id="folderBtn" class="pick">Set Folder…</button>
+            <button id="presetBtn" class="pick">Set Preset…</button>
+        </div>
+
+        <div class="settings">
+            <div class="row"><span class="label">Folder:</span><span class="val" id="folderVal">not set</span></div>
+            <div class="row"><span class="label">Preset:</span><span class="val" id="presetVal">not set</span></div>
+        </div>
+
+        <button id="exportBtn" disabled>Export Markers</button>
+        <div id="status"></div>
+    </div>
+
+    <script src="./js/CSInterface.js"></script>
+    <script src="./js/client.js"></script>
+</body>
+</html>
