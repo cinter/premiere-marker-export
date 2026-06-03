@@ -4,6 +4,8 @@ A small Adobe Premiere Pro panel that exports a clip for every sequence marker.
 Drop markers on your timeline, click one button, and each segment is queued to
 Adobe Media Encoder as its own file.
 
+![Marker Export panel turning timeline markers into video clips](docs/panel.png)
+
 ## What it does
 
 For each sequence marker, it exports the timeline from that marker to the
