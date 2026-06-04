@@ -19,14 +19,18 @@ Adobe Media Encoder preset you choose.
 
 ---
 
-## Install (the easy way — with an AI coding agent)
+## Install (the easy way)
 
 This panel is **unsigned**, so installing it normally means fiddling with
 debug-mode flags and hidden extension folders that differ per OS. Instead, let
 [Claude Code](https://claude.com/claude-code) or
-[Codex](https://openai.com/codex) do it — just paste this and send:
+[Codex](https://openai.com/codex) do it.
 
-> Install this Premiere panel for my OS: https://github.com/texjer/premiere-marker-export
+Open Codex / Claude Code and paste this in as your message:
+
+```
+Can we install this Premiere panel for my OS: https://github.com/texjer/premiere-marker-export
+```
 
 The agent will clone the repo, detect macOS vs Windows, enable unsigned CEP
 extensions, and install the panel into the right folder. Then fully quit and
