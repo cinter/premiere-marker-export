@@ -69,18 +69,21 @@ Then **fully quit and reopen Premiere Pro** → **Window → Extensions → Mark
 ## Usage
 
 1. Open a sequence and add markers where you want clips to start/end.
-2. Open the panel: **Window → Extensions → Marker Export**.
-3. **Set Folder…** — choose where exports go.
-4. **Set Preset…** — choose an Adobe Media Encoder `.epr` preset. The dialog
-   opens in your AME *Presets* folder, where presets you save in AME live.
-5. **Export Video Clips** — clips are queued and run in Adobe Media Encoder.
+2. **Make a preset.**
+
+   ![Saving an export preset from Premiere's Export page](docs/save-preset.png)
+
+   Since this plugin skips the normal "Export" process, you'll need to first
+   start to export your video normally and then **Save Preset** (the **···**
+   menu next to *Preset*). Then go back to our panel and select it by clicking
+   **Set Preset…** and picking the file you just saved (see picture above).
+3. Open the panel: **Window → Extensions → Marker Export**.
+4. **Set Folder…** — choose where exports go.
+5. **Set Preset…** — pick the `.epr` preset you saved. The dialog opens in your
+   AME *Presets* folder, where saved presets live.
+6. **Export Video Clips** — clips are queued and run in Adobe Media Encoder.
 
 Your folder and preset are remembered between sessions.
-
-### Making a preset
-
-In Adobe Media Encoder: **Preset Browser → ＋ (Create New Preset)**, pick a
-format (H.264 is typical), and save. It'll appear in the **Set Preset…** dialog.
 
 ---
 
