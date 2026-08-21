@@ -10,6 +10,8 @@
     var presetEl = document.getElementById("presetVal");
 
     var settings = { folder: null, preset: null, mode: "markers" };
+    var hevcUnsupportedMessage = "Premiere Pro 25.5+ blocks scripted HEVC/H.265 export. " +
+        "Choose an H.264 or ProRes preset, or export HEVC manually.";
 
     function setStatus(text, kind) {
         status.textContent = text || "";
@@ -50,14 +52,26 @@
             if (raw) settings = JSON.parse(raw);
         } catch (e) { /* ignore */ }
         renderSettings();
+        prepareForPreset();
+    }
 
-        // Launch AME while the user is choosing a folder and preset.  The host
-        // refuses to queue until AME has finished launching, avoiding a race
-        // where Premiere reports success but AME receives no jobs.
-        cs.evalScript("prepareEncoder()", function (result) {
-            if (/^ERROR/i.test(result)) setStatus(result, "err");
-            else if (result === "STARTING") {
-                setStatus("Starting Adobe Media Encoder…", "");
+    function prepareForPreset() {
+        if (!settings.preset) return;
+
+        cs.evalScript('getPresetExportMethod("' + esc(settings.preset) + '")', function (method) {
+            if (/^ERROR/i.test(method)) {
+                setStatus(method, "err");
+            } else if (method === "HEVC_UNSUPPORTED") {
+                setStatus(hevcUnsupportedMessage, "err");
+            } else if (method === "AME") {
+                // Launch AME while the user is choosing other options.  The
+                // host refuses to queue until AME has finished launching.
+                cs.evalScript("prepareEncoder()", function (result) {
+                    if (/^ERROR/i.test(result)) setStatus(result, "err");
+                    else if (result === "STARTING") {
+                        setStatus("Starting Adobe Media Encoder…", "");
+                    }
+                });
             }
         });
     }
@@ -84,6 +98,7 @@
             settings[key] = parts[1];
             saveSettings();
             renderSettings();
+            if (key === "preset") prepareForPreset();
             setStatus(label + " set.", "ok");
         });
     }
@@ -105,17 +120,32 @@
     exportBtn.addEventListener("click", function () {
         if (!settings.folder || !settings.preset) return;
         exportBtn.disabled = true;
-        setStatus("Queuing exports in Adobe Media Encoder…", "");
 
         var hostFn = settings.mode === "timelineClips" ?
             "exportTimelineClips" : "exportMarkersAsClips";
         var call = hostFn + '("' + esc(settings.folder) +
                    '", "' + esc(settings.preset) + '")';
 
-        cs.evalScript(call, function (result) {
-            renderSettings(); // re-enables export button if settings still valid
-            var isError = /^ERROR/i.test(result) || /^EvalScript error/i.test(result);
-            setStatus(result || "No response from host script.", isError ? "err" : "ok");
+        cs.evalScript('getPresetExportMethod("' + esc(settings.preset) + '")', function (method) {
+            if (/^ERROR/i.test(method)) {
+                renderSettings();
+                setStatus(method, "err");
+                return;
+            }
+
+            if (method === "HEVC_UNSUPPORTED") {
+                renderSettings();
+                setStatus(hevcUnsupportedMessage, "err");
+                return;
+            }
+
+            setStatus("Queuing exports in Adobe Media Encoder…", "");
+
+            cs.evalScript(call, function (result) {
+                renderSettings(); // re-enables export button if settings still valid
+                var isError = /^ERROR/i.test(result) || /^EvalScript error/i.test(result);
+                setStatus(result || "No response from host script.", isError ? "err" : "ok");
+            });
         });
     });
 
