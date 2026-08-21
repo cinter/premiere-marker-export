@@ -3,11 +3,13 @@
     var folderBtn = document.getElementById("folderBtn");
     var presetBtn = document.getElementById("presetBtn");
     var exportBtn = document.getElementById("exportBtn");
+    var modeEl = document.getElementById("modeSelect");
+    var hintEl = document.getElementById("modeHint");
     var status = document.getElementById("status");
     var folderEl = document.getElementById("folderVal");
     var presetEl = document.getElementById("presetVal");
 
-    var settings = { folder: null, preset: null };
+    var settings = { folder: null, preset: null, mode: "markers" };
 
     function setStatus(text, kind) {
         status.textContent = text || "";
@@ -26,10 +28,19 @@
     }
 
     function renderSettings() {
+        if (settings.mode !== "timelineClips") settings.mode = "markers";
         folderEl.textContent = settings.folder ? baseName(settings.folder) : "not set";
         folderEl.title = settings.folder || "";
         presetEl.textContent = settings.preset ? baseName(settings.preset) : "not set";
         presetEl.title = settings.preset || "";
+        modeEl.value = settings.mode;
+        exportBtn.textContent = settings.mode === "timelineClips" ?
+            "Export Timeline Clips" : "Export Marker Spans";
+        hintEl.textContent = settings.mode === "timelineClips" ?
+            "Queues one file for every video clip on every video track. " +
+            "Overlapping clips become separate exports." :
+            "Exports one video clip for the span between each pair of markers. " +
+            "With markers at every cut, 4 markers → 3 clips.";
         exportBtn.disabled = !(settings.folder && settings.preset);
     }
 
@@ -75,12 +86,20 @@
         choose("choosePreset", "preset", "preset");
     });
 
+    modeEl.addEventListener("change", function () {
+        settings.mode = modeEl.value;
+        saveSettings();
+        renderSettings();
+    });
+
     exportBtn.addEventListener("click", function () {
         if (!settings.folder || !settings.preset) return;
         exportBtn.disabled = true;
         setStatus("Queuing exports in Adobe Media Encoder…", "");
 
-        var call = 'exportMarkersAsClips("' + esc(settings.folder) +
+        var hostFn = settings.mode === "timelineClips" ?
+            "exportTimelineClips" : "exportMarkersAsClips";
+        var call = hostFn + '("' + esc(settings.folder) +
                    '", "' + esc(settings.preset) + '")';
 
         cs.evalScript(call, function (result) {
