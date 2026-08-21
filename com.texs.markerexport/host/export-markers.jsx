@@ -2,8 +2,53 @@
 // Entry points called by the panel via evalScript:
 //   chooseFolder()                            -> prompts for an export folder
 //   choosePreset()                            -> prompts for a .epr (opens in AME Presets)
-//   exportMarkersAsClips(folderPath, preset)  -> does the export with those paths
+//   exportMarkersAsClips(folderPath, preset)  -> exports ranges between sequence markers
+//   exportTimelineClips(folderPath, preset)   -> exports every timeline video clip
 // Uses marker duration if present; otherwise marker-to-next-marker.
+
+// AME can take a little time to become available after launch.  Starting the
+// batch before AME has acknowledged a queued job silently loses that job on
+// some Premiere/AME versions, so start it from AME's queued-job event instead.
+var markerExportEncoderEventsBound = false;
+var markerExportLastEncoderError = "";
+
+function markerExportOnEncoderJobQueued(jobID) {
+    app.encoder.startBatch();
+}
+
+function markerExportOnEncoderJobError(jobID, errorMessage) {
+    markerExportLastEncoderError = "ERROR: Adobe Media Encoder could not queue job " +
+        jobID + (errorMessage ? ": " + errorMessage : ".");
+}
+
+function bindMarkerExportEncoderEvents() {
+    if (markerExportEncoderEventsBound) return;
+
+    app.encoder.bind("onEncoderJobQueued", markerExportOnEncoderJobQueued);
+    app.encoder.bind("onEncoderJobError", markerExportOnEncoderJobError);
+    markerExportEncoderEventsBound = true;
+}
+
+// Called when the panel loads, and again immediately before queueing.  It
+// starts AME early so the user does not have to race its launch at export time.
+function prepareEncoder() {
+    bindMarkerExportEncoderEvents();
+
+    if (typeof BridgeTalk !== "undefined") {
+        var encoderStatus = BridgeTalk.getStatus("ame");
+        if (encoderStatus === "ISNOTINSTALLED") {
+            return "ERROR: Adobe Media Encoder is not installed.";
+        }
+        if (encoderStatus === "ISNOTRUNNING") {
+            app.encoder.launchEncoder();
+            return "STARTING";
+        }
+    } else {
+        app.encoder.launchEncoder();
+    }
+
+    return "READY";
+}
 
 // Find the newest "Adobe Media Encoder/<version>/Presets" folder, if any.
 function amePresetsDir() {
@@ -85,10 +130,15 @@ function queueRanges(seq, ranges, folderPath, presetPath, description) {
     var options = validateExportOptions(folderPath, presetPath);
     if (options.error) return options.error;
 
+    var encoderState = prepareEncoder();
+    if (encoderState.indexOf("ERROR:") === 0) return encoderState;
+    if (encoderState === "STARTING") {
+        return "ERROR: Adobe Media Encoder is still starting. Wait until it has opened, then export again.";
+    }
+
     var ext = seq.getExportFileExtension(options.presetFile.fsName);
     if (!ext || ext === "") ext = "mp4";
-
-    app.encoder.launchEncoder();
+    markerExportLastEncoderError = "";
 
     var queued = 0;
     for (var i = 0; i < ranges.length; i++) {
@@ -116,8 +166,8 @@ function queueRanges(seq, ranges, folderPath, presetPath, description) {
     }
 
     if (queued > 0) {
-        app.encoder.startBatch();
-        return "Queued " + queued + " " + description + " export(s) in Adobe Media Encoder.";
+        return "Queued " + queued + " " + description +
+            " export(s). Adobe Media Encoder will start when it receives them.";
     }
     return "ERROR: No valid " + description + " ranges found.";
 }
