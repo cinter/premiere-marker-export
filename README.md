@@ -109,6 +109,10 @@ Delete the panel from your CEP extensions folder:
 
 - **Premiere Pro 2019–2026+** (CEP 9–13), on **macOS and Windows**.
 - Requires **Adobe Media Encoder** installed (the panel queues exports to it).
+- **HEVC/H.265:** Premiere Pro 25.5 and newer block scripted HEVC generation.
+  The panel detects HEVC presets and explains the limitation instead of
+  reporting jobs that AME will silently discard. Use H.264 or ProRes for
+  automated exports, or export HEVC manually.
 
 ## Notes
 
