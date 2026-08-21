@@ -50,6 +50,16 @@
             if (raw) settings = JSON.parse(raw);
         } catch (e) { /* ignore */ }
         renderSettings();
+
+        // Launch AME while the user is choosing a folder and preset.  The host
+        // refuses to queue until AME has finished launching, avoiding a race
+        // where Premiere reports success but AME receives no jobs.
+        cs.evalScript("prepareEncoder()", function (result) {
+            if (/^ERROR/i.test(result)) setStatus(result, "err");
+            else if (result === "STARTING") {
+                setStatus("Starting Adobe Media Encoder…", "");
+            }
+        });
     }
 
     function saveSettings() {
