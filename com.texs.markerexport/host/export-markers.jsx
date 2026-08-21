@@ -112,6 +112,25 @@ function validateExportOptions(folderPath, presetPath) {
     return { presetFile: presetFile, outFolder: outFolder };
 }
 
+// Premiere Pro 25.5+ disallows scripted HEVC generation, even though the same
+// preset works through the Export UI. EPR files store their output format as a
+// decimal FourCC; 1212503619 is "HEVC".
+function presetUsesHevc(presetFile) {
+    if (!presetFile || !presetFile.exists || !presetFile.open("r")) return false;
+
+    var contents = presetFile.read();
+    presetFile.close();
+    return /<ExporterFileType>\s*1212503619\s*<\/ExporterFileType>/i.test(contents);
+}
+
+function getPresetExportMethod(presetPath) {
+    if (!presetPath) return "ERROR: Choose an export preset first.";
+
+    var presetFile = new File(presetPath);
+    if (!presetFile.exists) return "ERROR: Preset file not found:\n" + presetPath;
+    return presetUsesHevc(presetFile) ? "HEVC_UNSUPPORTED" : "AME";
+}
+
 function safeExportName(name) {
     if (!name || name === "") name = "clip";
     return name
@@ -126,9 +145,34 @@ function padExportNumber(num, size) {
     return s;
 }
 
+function exportPathSeparator() {
+    return Folder.fs === "Windows" ? "\\" : "/";
+}
+
+function stripSourceExtension(name) {
+    return name.replace(/\.[A-Za-z0-9]{1,8}$/i, "");
+}
+
+function uniqueOutputPath(outFolder, baseName, ext) {
+    var sep = exportPathSeparator();
+    var path = outFolder.fsName + sep + baseName + "." + ext;
+    var suffix = 2;
+
+    while ((new File(path)).exists) {
+        path = outFolder.fsName + sep + baseName + "_" + suffix + "." + ext;
+        suffix++;
+    }
+    return path;
+}
+
 function queueRanges(seq, ranges, folderPath, presetPath, description) {
     var options = validateExportOptions(folderPath, presetPath);
     if (options.error) return options.error;
+
+    if (presetUsesHevc(options.presetFile)) {
+        return "ERROR: Premiere Pro 25.5+ blocks scripted HEVC/H.265 export. " +
+            "Choose an H.264 or ProRes preset, or export HEVC manually.";
+    }
 
     var encoderState = prepareEncoder();
     if (encoderState.indexOf("ERROR:") === 0) return encoderState;
@@ -140,33 +184,43 @@ function queueRanges(seq, ranges, folderPath, presetPath, description) {
     if (!ext || ext === "") ext = "mp4";
     markerExportLastEncoderError = "";
 
-    var queued = 0;
-    for (var i = 0; i < ranges.length; i++) {
-        var range = ranges[i];
-        if (range.end <= range.start) continue;
+    var oldInPoint = seq.getInPointAsTime ? seq.getInPointAsTime() : null;
+    var oldOutPoint = seq.getOutPointAsTime ? seq.getOutPointAsTime() : null;
+    var completed = 0;
 
-        seq.setInPoint(range.start);
-        seq.setOutPoint(range.end);
+    try {
+        for (var i = 0; i < ranges.length; i++) {
+            var range = ranges[i];
+            if (range.end <= range.start) continue;
 
-        var filename = padExportNumber(i + 1, 3) + "_" +
-            safeExportName(range.name) + "." + ext;
-        var outputPath = options.outFolder.fsName + "/" + filename;
+            seq.setInPoint(range.start);
+            seq.setOutPoint(range.end);
 
-        // 1 = ENCODE_IN_TO_OUT
-        // 1 = remove job from AME queue after completion
-        var jobID = app.encoder.encodeSequence(
-            seq,
-            outputPath,
-            options.presetFile.fsName,
-            1,
-            1
-        );
+            var rangeName = safeExportName(range.name);
+            if (range.stripExtension) rangeName = stripSourceExtension(rangeName);
 
-        if (jobID && jobID !== "0") queued++;
+            var baseName = padExportNumber(i + 1, 3) + "_" + rangeName;
+            var outputPath = uniqueOutputPath(options.outFolder, baseName, ext);
+
+            // 1 = ENCODE_IN_TO_OUT
+            // 1 = remove job from AME queue after completion
+            var jobID = app.encoder.encodeSequence(
+                seq,
+                outputPath,
+                options.presetFile.fsName,
+                1,
+                1
+            );
+
+            if (jobID && jobID !== "0") completed++;
+        }
+    } finally {
+        if (oldInPoint) seq.setInPoint(oldInPoint.seconds);
+        if (oldOutPoint) seq.setOutPoint(oldOutPoint.seconds);
     }
 
-    if (queued > 0) {
-        return "Queued " + queued + " " + description +
+    if (completed > 0) {
+        return "Queued " + completed + " " + description +
             " export(s). Adobe Media Encoder will start when it receives them.";
     }
     return "ERROR: No valid " + description + " ranges found.";
@@ -239,6 +293,7 @@ function exportTimelineClips(folderPath, presetPath) {
                 start: clip.start.seconds,
                 end: clip.end.seconds,
                 name: "V" + (trackIndex + 1) + "_" + (clip.name || "clip"),
+                stripExtension: true,
                 trackIndex: trackIndex,
                 clipIndex: clipIndex
             });
